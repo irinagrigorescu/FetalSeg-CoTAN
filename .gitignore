@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# My Gitignores
+note-on-models.txt
+.idea
+.idea/*
