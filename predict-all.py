@@ -1,21 +1,21 @@
 ########################################################################
 ###### IRINA GRIGORESCU
 ######
-###### This script predict all surfaces needed for fetal DHCP
+###### This script predicts all surfaces needed for fetal DHCP
 ########################################################################
+
+###### NOTE: please note that this piece of code is not ready yet to be used
+######       I am still in the process of cleaning up the code for wider use
 
 # Input:  Lab affine subject (input to network)
 #         Initial surfaces as input to the network
 # -- input should also be a tsv file where:
 #    participant_id  session_id      scan_age        dataset
-#    CC00856XX15     3530    37.43   test
-#    CC00888XX23     2732    35.29   train
-#    CC01019XX13     46330   21.14   FAIL
 
 # for any subject you need to
-# have the data pre-affinely aligned to a template
-#
-# 1. Load T2w template / Label affine (input to network) / T2w original
+# have the data pre-affinely aligned to a template - I will add code for this
+
+# 1. Load T2w template / Label affine (input to network)
 # 2. Predict left/right wm/pial
 # 3. Save surfaces in the original space
 # 4. Run freesurfer with subprocess to inflate surface and obtain:
@@ -28,14 +28,11 @@
 #    b) cortical thickness
 #    c) surface area
 
-
 # Output: Surfaces predicted should be saved in the original space +
 #         Sulcal Depth +
 #         Curvature +
-#         Cortical Thickness +
-#         Subject Sphere (Freesurfer) +
-#         Inflated +
-#         V-Inflated
+#         Cortical Thickness
+
 ####################
 import os
 import torch
@@ -92,12 +89,7 @@ def run_predict_all(args):
     model_right_white = CoTAN(    layers=[16, 32, 64, 128, 128], M=4, R=3, device=device).to(device)
     model_right_pial  = CoTANPial(layers=[16, 32, 32, 32, 32],   M=4, R=3, device=device).to(device)
 
-    ############################# BELOW are
-    ############################# the MB models which were trained on bounti-43 for
-    ############################# 1) 600E for WM on old surfaces + 50E on new surfaces with extra iterations
-    ############################# 2) 800E for pial on old surfaces + 50E on new surfaces with extra iterations
-    ############################# and saved in output-data-COTAN-wLAB-dhcp-MB-MBv4/
-
+    ############################# BELOW are the MB models which were trained on multi-BOUNTI data
     # -------------- LOAD PRE-TRAINED MODELS
     model_path_white = "./model-weights/"
     model_path_pial  = "./model-weights/"
@@ -181,10 +173,6 @@ def run_predict_all(args):
         # ---> save subject name and age
         csv_results_data["subj"][i_s] = curr_subj
         csv_results_data["scan_age"][i_s] = curr_age
-
-        # if curr_subj != "sub-CC00974XX18_ses-34631": continue
-        # if curr_subj != "sub-CC01098XX19_ses-78530": continue
-        # if curr_age < 33.0 : continue
 
         # ---------------------------------- CREATE SUBFOLDER
         final_path = os.path.join(output_path, curr_subj)
@@ -485,17 +473,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     run_predict_all(args)
-
-
-############################# BELOW are
-############################# the MB models which were trained on bounti-43 for
-############################# 1) 600E for WM on old surfaces + 50E on new surfaces with extra iterations
-############################# 2) 800E for pial on old surfaces + 50E on new surfaces with extra iterations
-############################# and saved in output-data-COTAN-wLAB-dhcp-MB-MBv4/
-# python -m fetal-predict-all.fetal-dhcp-MB-predict-all-MBv2
-# --tsv_file_subjects="/data/project/fetal-multibounti/fetal-dhcp-multibounti.tsv"
-# --results_file="dhcp_MB_metrics_all.csv"
-# --templates_path="/home/igr18/PycharmProjects/FetalSeg-CoTAN/templates/"
-# --affine_label_path="/data/project/fetal-multibounti/3_Aff/"
-# --output_path="/data/project/fetal-surfaces/surfaces-Irina/output-data-COTAN-wLAB-dhcp-MB-MBv4/"
-# --device="cuda"
