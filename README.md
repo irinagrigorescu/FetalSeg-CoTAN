@@ -37,7 +37,7 @@ such that ```[SUBJ1]=sub-CC00001XX01_ses-1000``` and ```[SUBJ2]=sub-CC00001XX02_
 
 Go to ```preprocessing/``` and run the following command:
 ```
-bash multi-preprocess-subject.sh PATH/TO/FOLDER_INPUT PATH/TO/FOLDER_OUTPUT
+bash multi_preprocess_subject.sh PATH/TO/FOLDER_INPUT PATH/TO/FOLDER_OUTPUT
 ```
 This will do the following:
 
