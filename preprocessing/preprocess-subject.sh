@@ -19,7 +19,7 @@ set -euo pipefail
 ###### Expected Input Data:
 ######   PATH/TO/INPUT/FOLDER/${SUBJ}/
 ######     ├── ${SUBJ}_T2w.nii.gz
-######     └── ${SUBJ}_LAB43_brain.nii.gz
+######     └── ${SUBJ}_LAB43_brain.nii.gz           (This is the multi-bounti data)
 ######
 ###### Generated Outputs:
 ###### 1. Preprocessing outputs generated inside input directory:
