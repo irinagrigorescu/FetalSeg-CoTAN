@@ -45,10 +45,6 @@ SUBJ="$1"
 INPUT_DIR="$2"
 OUTPUT_DIR="$3"
 
-# -------------- Paths
-# MIRTK
-mirtk="/home/igr18/Tools/MIRTK-build/bin/mirtk"
-
 # INPUT PATHS
 FOLDER_ORIG="${INPUT_DIR}/${SUBJ}/"   # e.g.: ${SUBJ}_T2w.nii.gz | ${SUBJ}_LAB43_brain.nii.gz
 
