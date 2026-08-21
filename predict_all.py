@@ -196,8 +196,7 @@ def run_predict_all(args):
     # -------------- GO THROUGH ALL THE SUBJECTS
     for i_s, curr_subj in enumerate(subjects_names):
         # TODO: run for one subject only first
-        # if i_s > 2: break
-        # if curr_loc != "test": continue
+        #if i_s > 0: break
 
         # -------------- Get current subject's age
         curr_age = float(subjects_ages[i_s])
@@ -473,7 +472,7 @@ def run_predict_all(args):
 
             # DO LEFT
             if do_left:
-                cmd_left = ["bash", "postprocessing/create-spheres.sh", curr_subj, final_path, "left"]
+                cmd_left = ["bash", "postprocessing/create_spheres.sh", curr_subj, final_path, "left"]
                 res_left = subprocess.run(cmd_left, check=False)
 
                 if res_left.returncode == 0:
@@ -489,13 +488,13 @@ def run_predict_all(args):
 
             # DO RIGHT
             if do_right:
-                cmd_right = ["bash", "postprocessing/create-spheres.sh", curr_subj, final_path, "right"]
+                cmd_right = ["bash", "postprocessing/create_spheres.sh", curr_subj, final_path, "right"]
                 res_right = subprocess.run(cmd_right, check=False)
 
                 if res_right.returncode == 0:
                     # Re-save GIFTI outputs with correct Workbench metadata
                     correct_generated_surfaces(final_path, curr_subj, "right")
-                    
+
                     csv_log_data["sphere_right"][i_s] = "Y"
                     t_end_end = time.time()
                     csv_log_data["time_recon_wsphere_right"][i_s] = float(t_end_end - t_start_start)
@@ -507,7 +506,6 @@ def run_predict_all(args):
             csv_log_data["sphere_right"][i_s] = "SKIPPED"
         ###############################################################
         ###############################################################
-
 
     ###############################################################
     ###############################################################
@@ -592,7 +590,7 @@ if __name__ == "__main__":
 
 
 ### TEST if it works:
-# python -m predict-all
+# python -m predict_all
 # --tsv_file_subjects="/data/project/test-fetalsegcotan/fetal-subjects.tsv"
 # --results_file="fetal-metrics.csv"
 # --logs_file="fetal-logs.csv"
@@ -602,4 +600,4 @@ if __name__ == "__main__":
 # --output_path="/data/project/test-fetalsegcotan/output/"
 # --do_spheres
 # --device="cuda"
-# python -m predict-all --tsv_file_subjects="/data/project/test-fetalsegcotan/fetal-subjects.tsv" --results_file="fetal-metrics.csv" --logs_file="fetal-logs.csv" --templates_path="templates/" --orig_t2w_path="/data/project/test-fetalsegcotan/input-orig/" --affine_label_path="/data/project/test-fetalsegcotan/input-aff/" --output_path="/data/project/test-fetalsegcotan/output/" --do_spheres --device="cuda"
+# python -m predict_all --tsv_file_subjects="/data/project/test-fetalsegcotan/fetal-subjects.tsv" --results_file="fetal-metrics.csv" --logs_file="fetal-logs.csv" --templates_path="templates/" --orig_t2w_path="/data/project/test-fetalsegcotan/input-orig/" --affine_label_path="/data/project/test-fetalsegcotan/input-aff/" --output_path="/data/project/test-fetalsegcotan/output/" --do_spheres --device="cuda"
