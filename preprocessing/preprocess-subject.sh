@@ -4,34 +4,48 @@ set -euo pipefail
 
 ######
 ###### Irina Grigorescu | 2026-04-22
-###### This script takes as input a subject and prepares it for inference
+###### This script takes as input a subject and prepares it for inference by:
+###### 1. Generating simplified labels and a brain mask.
+###### 2. Affinely registering the subject data to a fetal dHCP template.
 ######
-###### The input parameters are:
-###### ${SUBJ}  PATH/TO/INPUT/FOLDER  PATH/TO/OUTPUT/FOLDER
+###### Usage:
+######   ./preprocess-subject.sh <SUBJ> <PATH/TO/INPUT/FOLDER> <PATH/TO/OUTPUT/FOLDER>
 ######
-###### The expected input is:
-###### PATH/TO/INPUT/FOLDER/${SUBJ}/${SUBJ}_T2w.nii.gz  and  PATH/TO/INPUT/FOLDER/${SUBJ}/${SUBJ}_LAB43_brain.nii.gz
+###### Input Parameters:
+######   ${SUBJ}                 : Subject ID (e.g., sub-01_ses-01)
+######   PATH/TO/INPUT/FOLDER    : Directory containing original subject subfolders
+######   PATH/TO/OUTPUT/FOLDER   : Directory where affine-registered outputs will be saved
 ######
-###### The outputs are:
+###### Expected Input Data:
+######   PATH/TO/INPUT/FOLDER/${SUBJ}/
+######     ├── ${SUBJ}_T2w.nii.gz
+######     └── ${SUBJ}_LAB43_brain.nii.gz
 ######
-###### 1. It creates the simplified brain label data from the MultiBounti 43 labels data and a brain mask
-###### PATH/TO/INPUT/FOLDER/${SUBJ}/
-######     ├── ${SUBJ}_LAB_brain.nii.gz
-######     └── ${SUBJ}_brain-mask.nii.gz
+###### Generated Outputs:
+###### 1. Preprocessing outputs generated inside input directory:
+######   PATH/TO/INPUT/FOLDER/${SUBJ}/
+######     ├── ${SUBJ}_T2w.nii.gz
+######     ├── ${SUBJ}_LAB43_brain.nii.gz
+######     ├── ${SUBJ}_LAB_brain.nii.gz             (Simplified labels: 1-csf|2-cgm|3-wm|4-cerebellum|5-brainstem)
+######     └── ${SUBJ}_brain-mask.nii.gz            (Smoothed binary brain mask)
 ######
-###### 2. It creates the affinely registered data:
-###### PATH/TO/OUTPUT/FOLDER/${SUBJ}/
-######     ├── ${SUBJ}_affine_0GenericAffine.mat
-######     ├── ${SUBJ}_LAB_brain_affine.nii.gz               (1-csf|2-cgm|3-wm|4-cerebellum|5-brainstem)
-######     ├── ${SUBJ}_LAB43_brain_affine.nii.gz
-######     └── ${SUBJ}_T2w_affine.nii.gz
+###### 2. Affine-registered outputs saved in output directory:
+######   PATH/TO/OUTPUT/FOLDER/${SUBJ}/
+######     ├── ${SUBJ}_affine_0GenericAffine.mat   (Affine transformation matrix)
+######     ├── ${SUBJ}_LAB_brain_affine.nii.gz      (Affine-aligned simplified label)
+######     ├── ${SUBJ}_LAB43_brain_affine.nii.gz    (Affine-aligned LAB43 label)
+######     └── ${SUBJ}_T2w_affine.nii.gz            (Affine-aligned T2w image)
 ######
-###### The steps:
-###### 1. Make subject output folder: mkdir -p PATH/TO/OUTPUT/FOLDER/${SUBJ}/
-###### 2. Copy data from PATH/TO/INPUT/FOLDER to PATH/TO/OUTPUT/FOLDER/${SUBJ}/
-###### 3. Mask T2w image based on the labels
-###### 4. Affinly align subject to template
-###### 5. Cleanup
+###### Dependencies & Helpers:
+######   - Template: ../templates/dhcp_fetal_week36_t2w.nii.gz
+######   - Helper 1: preprocessing-helpers/create-label-simple.py
+######   - Helper 2: preprocessing-helpers/register-subject.py
+######
+###### Execution Steps:
+###### 1. Verify that required input files exist.
+###### 2. Generate simplified label map and binary mask if not already present.
+###### 3. Ensure subject output directory exists.
+###### 4. Perform affine registration to fetal template if output files do not already exist.
 ######
 
 # -------------- CHECK ARGUMENTS
@@ -103,6 +117,3 @@ else
             --template_path "${TEMPLATE_PATH}" \
             --out_dir "${FOLDER_OUTPUT_SUBJECT}"
 fi
-
-#### Example run:
-# bash preprocess-subject.sh sub-CC01137XX16_ses-93632 /data/project/test-fetalsegcotan/input-orig/ /data/project/test-fetalsegcotan/input-aff/
