@@ -63,7 +63,7 @@ if [[ ! -f "$TSV" ]]; then
     exit 1
 fi
 
-SCRIPT="preprocess-subject.sh"
+SCRIPT="preprocess_subject.sh"
 
 # Ensure output directory exists for logs
 mkdir -p "$FOLDER_OUTPUT"

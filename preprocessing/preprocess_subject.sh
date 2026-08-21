@@ -38,8 +38,8 @@ set -euo pipefail
 ######
 ###### Dependencies & Helpers:
 ######   - Template: ../templates/dhcp_fetal_week36_t2w.nii.gz
-######   - Helper 1: preprocessing-helpers/create-label-simple.py
-######   - Helper 2: preprocessing-helpers/register-subject.py
+######   - Helper 1: preprocessing_helpers/create_label_simple.py
+######   - Helper 2: preprocessing_helpers/register_subject.py
 ######
 ###### Execution Steps:
 ###### 1. Verify that required input files exist.
@@ -88,7 +88,7 @@ if [[ -f "${FILE_SEG_SIMPLE}" ]] && [[ -f "${FILE_MASK_SIMPLE}" ]]; then
     echo -e "[+] Simplified label and brain mask already exist for ${SUBJ}. Skipping generation."
 else
     echo -e "[*] Generating simplified label and brain mask..."
-    python preprocessing-helpers/create-label-simple.py \
+    python preprocessing_helpers/create_label_simple.py \
            "${FILE_SEG_ORIG}" \
            "${FILE_SEG_SIMPLE}" \
            "${FILE_MASK_SIMPLE}"
@@ -108,7 +108,7 @@ if [[ -f "${FILE_AFFINE_MAT}" ]] && \
     echo -e "[+] All affine registration outputs already exist for ${SUBJ}. Skipping registration."
 else
     echo -e "[*] Running affine registration for ${SUBJ}..."
-    python preprocessing-helpers/register-subject.py \
+    python preprocessing_helpers/register_subject.py \
             --subj "${SUBJ}" \
             --t2_path "${FILE_T2W_ORIG}" \
             --label_path "${FILE_SEG_ORIG}" \

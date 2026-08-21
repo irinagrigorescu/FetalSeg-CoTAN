@@ -10,7 +10,7 @@
 # Input:  Lab affine subject (input to network)
 #         Initial surfaces as input to the network
 # -- input should also be a tsv file where:
-#    participant_id  session_id      scan_age        dataset
+#    participant_id    session_id    scan_age
 
 # for any subject you need to
 # have the data pre-affinely aligned to a template - I will add code for this
@@ -29,6 +29,7 @@
 #    c) surface area
 
 # Output: Surfaces predicted should be saved in the original space +
+#         Midthickness +
 #         Sulcal Depth +
 #         Curvature +
 #         Cortical Thickness
@@ -41,6 +42,8 @@ import numpy as np
 import pandas as pd
 import argparse
 import nibabel as nib
+import shutil
+import subprocess
 
 from src.io import (
     load_T2w_template_and_affine, load_initial_surfaces,
@@ -61,22 +64,45 @@ from src.metrics import (
     sulcal_depth, calculate_average_thickness, curvature, metric_dilation
 )
 
+#############################################
+### This is to re-save the freesurfer generated surfaces
+from postprocessing.postprocessing_helpers.save_surfaces_correctly import save_gifti_surface_correctly
+
+
+def correct_generated_surfaces(subj_dir, subj_id, hemi):
+    """Re-saves FreeSurfer GIFTI outputs with corrected metadata/headers."""
+    surface_types = ["inflated", "vinflated", "sphere"]
+
+    for stype in surface_types:
+        surf_path = os.path.join(subj_dir, f"{subj_id}_pred_{hemi}_{stype}.surf.gii")
+
+        if os.path.exists(surf_path):
+            save_gifti_surface_correctly(
+                        data_path_in=surf_path,
+                        data_path_out=surf_path,
+                        surface_hemi=hemi,
+                        surface_type=stype
+            )
+#############################################
+
 
 # ========== MAIN FUNCTION  ==========
 def run_predict_all(args):
     """
-    This runs the compute cortical thickness, curvature and sulcal depth
-        for all subjects in a given dataset
+    This runs the compute cortical thickness, curvature and sulcal depth for all subjects in the given csv file
     :param args:
     :return:
     """
     # -------------- LOAD ARGUMENTS
     tsv_file_subjects = args.tsv_file_subjects  # path to tsv file with all subjects
-    templates_path    = args.templates_path  # path to initial surfaces templates and t2w template
-    affine_label_path = args.affine_label_path  # the path to the affinely registered T2w
-    output_path       = args.output_path  # the path to the outputs
-    device            = args.device  # whether cpu or cuda
-    results_file      = args.results_file  # file where all metrics are stored
+    templates_path    = args.templates_path     # path to initial surfaces templates and t2w template
+    orig_t2w_path     = args.orig_t2w_path      # the path to the original T2w
+    affine_label_path = args.affine_label_path  # the path to the affinely registered label
+    output_path       = args.output_path        # the path to the outputs
+    do_spheres        = args.do_spheres         # flag to run script for spheres or not
+    device            = args.device             # whether cpu or cuda
+    results_file      = args.results_file       # file where all metrics are stored
+    logs_file         = args.logs_file          # file where all the logs are stored
 
     # -------------- SET ARGUMENTS
     step_size = 0.02
@@ -143,7 +169,7 @@ def run_predict_all(args):
 
     # get names/ages and data location
     subjects_names    = ["sub-" + sub_ + "_ses-" + str(ses_) for sub_, ses_ in zip(subjects_pd['participant_id'],
-                                                                                subjects_pd['session_id'])]
+                                                                                   subjects_pd['session_id'])]
     subjects_ages     = [age_ for age_ in subjects_pd['scan_age']]
     n_subjects        = len(subjects_names)
 
@@ -159,6 +185,12 @@ def run_predict_all(args):
                 "surf_area_L", "surf_area_R", "mean_surf_area_L", "mean_surf_area_R"]     # surface area
     csv_results_data = {k: ["NA"] * len(subjects_names) for k in all_keys}
 
+    # -------------- INITIALIZE LOG DATA
+    log_keys = ["subj", "scan_age", "sphere_left", "sphere_right",
+                "time_recon_left", "time_recon_right",
+                "time_recon_wsphere_left", "time_recon_wsphere_right"]
+    csv_log_data = {k: ["NA"] * len(subjects_names) for k in log_keys}
+
     ###############################################################
     ###############################################################
     # -------------- GO THROUGH ALL THE SUBJECTS
@@ -173,16 +205,27 @@ def run_predict_all(args):
         # ---> save subject name and age
         csv_results_data["subj"][i_s] = curr_subj
         csv_results_data["scan_age"][i_s] = curr_age
+        # ---> save subject name and age
+        csv_log_data["subj"][i_s] = curr_subj
+        csv_log_data["scan_age"][i_s] = curr_age
 
         # ---------------------------------- CREATE SUBFOLDER
         final_path = os.path.join(output_path, curr_subj)
         os.makedirs(final_path, exist_ok=True)
 
-        # -------------- Get current subject's path to the affinely aligned label data
+        # -------------- Get PATHS
+        # current subject's path to the original t2w image (before registration)
+        curr_orig_t2w = f"{orig_t2w_path}/{curr_subj}/{curr_subj}_T2w.nii.gz"
+        # current subject's path to the affinely aligned label data
         curr_aff_lab = f"{affine_label_path}/{curr_subj}/{curr_subj}_LAB_brain_affine.nii.gz"
 
-        # Check the paths exist
+        # -------------- Check existence
         if check_file_exists(curr_aff_lab, "affine label") == -1: return -1
+        if check_file_exists(curr_orig_t2w, "original t2w") == -1: return -1
+
+        # -------------- COPY original T2w image to final_path
+        shutil.copy(curr_orig_t2w, final_path)
+        print(f"Copied {curr_subj}_T2w.nii.gz to {final_path}")
 
         # -------------- LOAD data and affines
         print('\nLoad Label data ...')
@@ -412,11 +455,59 @@ def run_predict_all(args):
                               save_dir=os.path.join(final_path, f"{curr_subj}_pred_right_thickness.shape.gii"),
                               surf_hemi="right", metric_type="thickness")
 
+        t_end_end = time.time()
+        print(f"\nDone with subject surfaces generation {curr_subj:28s} {curr_age:5.2f} " +
+              f"Runtime: {np.round(t_end_end - t_start_start, 4)} \n\n")
+
+        # ---------------------------------- Store time_recon
+        if do_left:
+            csv_log_data["time_recon_left"][i_s] = float(t_end_end - t_start_start)
+        if do_right:
+            csv_log_data["time_recon_right"][i_s] = float(t_end_end - t_start_start)
+
+        ###############################################################
+        ###############################################################
+        # ---------------------------------- DO SPHERES
+        if do_spheres:
+            print('\nStarting surface inflation to sphere...')
+
+            # DO LEFT
+            if do_left:
+                cmd_left = ["bash", "postprocessing/create-spheres.sh", curr_subj, final_path, "left"]
+                res_left = subprocess.run(cmd_left, check=False)
+
+                if res_left.returncode == 0:
+                    # Re-save GIFTI outputs with correct Workbench metadata
+                    correct_generated_surfaces(final_path, curr_subj, "left")
+
+                    csv_log_data["sphere_left"][i_s] = "Y"
+                    t_end_end = time.time()
+                    csv_log_data["time_recon_wsphere_left"][i_s] = float(t_end_end - t_start_start)
+                else:
+                    print(f"[-] Inflation failed for {curr_subj} left hemisphere.")
+                    csv_log_data["sphere_left"][i_s] = "N"
+
+            # DO RIGHT
+            if do_right:
+                cmd_right = ["bash", "postprocessing/create-spheres.sh", curr_subj, final_path, "right"]
+                res_right = subprocess.run(cmd_right, check=False)
+
+                if res_right.returncode == 0:
+                    # Re-save GIFTI outputs with correct Workbench metadata
+                    correct_generated_surfaces(final_path, curr_subj, "right")
+                    
+                    csv_log_data["sphere_right"][i_s] = "Y"
+                    t_end_end = time.time()
+                    csv_log_data["time_recon_wsphere_right"][i_s] = float(t_end_end - t_start_start)
+                else:
+                    print(f"[-] Inflation failed for {curr_subj} right hemisphere.")
+                    csv_log_data["sphere_right"][i_s] = "N"
+        else:
+            csv_log_data["sphere_left"][i_s]  = "SKIPPED"
+            csv_log_data["sphere_right"][i_s] = "SKIPPED"
         ###############################################################
         ###############################################################
 
-        t_end_end = time.time()
-        print(f"\nDone with subject {curr_subj:28s} {curr_age:5.2f} Runtime: {np.round(t_end_end - t_start_start, 4)} \n\n")
 
     ###############################################################
     ###############################################################
@@ -425,6 +516,12 @@ def run_predict_all(args):
     df = pd.DataFrame(csv_results_data)
     # save to CSV (no index column)
     df.to_csv(os.path.join(output_path, results_file), index=False)
+
+    # -------------- SAVE THE LOGS
+    # convert your dict to a DataFrame
+    df = pd.DataFrame(csv_log_data)
+    # save to CSV (no index column)
+    df.to_csv(os.path.join(output_path, logs_file), index=False)
 
 
 # ========== RUN CALCULATION ==========
@@ -436,8 +533,8 @@ if __name__ == "__main__":
                         default='fetal-subjects.tsv',
                         type=str,
                         help=r"""path to tsv file with all subjects
-                        e.g. participant_id session_id  scan_age
-                             CC00001XX01    1000        25.0""")
+                        e.g. participant_id    session_id    scan_age
+                             CC00001XX01       1000          25.0""")
 
     parser.add_argument('--results_file',
                         default='fetal-metrics.csv',
@@ -445,12 +542,24 @@ if __name__ == "__main__":
                         help=r"""file where all the metrics calculated here will be stored
                                  location will be at --output_path / --results_file""")
 
+    parser.add_argument('--logs_file',
+                        default='fetal-logs.csv',
+                        type=str,
+                        help=r"""file where we keep the logs of what failed and what was succesful
+                                 location will be at --output_path / --logs_file""")
+
     parser.add_argument('--templates_path',
                         default="templates/",
                         type=str,
                         help=r"""path to initial weekly surfaces and template t2w for alignment
                             (surfaces are used for input to the model and T2w template is used for 
                              aligning your data to this template)""")
+
+    parser.add_argument('--orig_t2w_path',
+                        default='fetal-original-data/',
+                        type=str,
+                        help=r"""expects the input data to be in PATH + /sub-CC***_ses-***/ for each subject
+                            This represents the path to the original T2w data""")
 
     parser.add_argument('--affine_label_path',
                         default='fetal-affine-aligned-data/',
@@ -464,6 +573,13 @@ if __name__ == "__main__":
                         help=r"""location where it will store the predictions; 
                         note that it will create a folder per subject at this specified location""")
 
+    parser.add_argument('--do_spheres',
+                        action='store_true',
+                        default=False,
+                        help=r"""[optional]
+                        whether to run surface inflation to create spherical mappings.
+                        Default is False.""")
+
     parser.add_argument('--device',
                         default='cuda',
                         type=str,
@@ -473,3 +589,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     run_predict_all(args)
+
+
+### TEST if it works:
+# python -m predict-all
+# --tsv_file_subjects="/data/project/test-fetalsegcotan/fetal-subjects.tsv"
+# --results_file="fetal-metrics.csv"
+# --logs_file="fetal-logs.csv"
+# --templates_path="templates/"
+# --orig_t2w_path="/data/project/test-fetalsegcotan/input-orig/"
+# --affine_label_path="/data/project/test-fetalsegcotan/input-aff/"
+# --output_path="/data/project/test-fetalsegcotan/output/"
+# --do_spheres
+# --device="cuda"
+# python -m predict-all --tsv_file_subjects="/data/project/test-fetalsegcotan/fetal-subjects.tsv" --results_file="fetal-metrics.csv" --logs_file="fetal-logs.csv" --templates_path="templates/" --orig_t2w_path="/data/project/test-fetalsegcotan/input-orig/" --affine_label_path="/data/project/test-fetalsegcotan/input-aff/" --output_path="/data/project/test-fetalsegcotan/output/" --do_spheres --device="cuda"
