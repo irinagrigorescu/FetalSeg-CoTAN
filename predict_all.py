@@ -1,38 +1,45 @@
 ########################################################################
 ###### IRINA GRIGORESCU
 ######
-###### This script predicts all surfaces needed for fetal DHCP
+###### Fetal Surface Reconstruction and Metric Extraction Pipeline
 ########################################################################
-
-###### NOTE: please note that this piece of code is not ready yet to be used
-######       I am still in the process of cleaning up the code for wider use
-
-# Input:  Lab affine subject (input to network)
-#         Initial surfaces as input to the network
-# -- input should also be a tsv file where:
-#    participant_id    session_id    scan_age
-
-# for any subject you need to
-# have the data pre-affinely aligned to a template - I will add code for this
-
-# 1. Load T2w template / Label affine (input to network)
-# 2. Predict left/right wm/pial
-# 3. Save surfaces in the original space
-# 4. Run freesurfer with subprocess to inflate surface and obtain:
-#    a) inflated surface
-#    b) very-inflated surface
-#    c) subject specific sphere
-#    d) sulcal depth
-# 5. Run python code to produce:
-#    a) curvature
-#    b) cortical thickness
-#    c) surface area
-
-# Output: Surfaces predicted should be saved in the original space +
-#         Midthickness +
-#         Sulcal Depth +
-#         Curvature +
-#         Cortical Thickness
+#
+# This script performs end-to-end surface prediction, metric calculation, and
+# post-processing for fetal MRI brain data. It loads pre-aligned
+# segmentation labels, predicts cortical surfaces, transforms outputs back into original native space,
+# and extracts key morphological metrics.
+#
+# Prerequisites:
+# ---------------------------
+# 1. TSV Subject List (--tsv_file_subjects):
+#    Must contain columns: [participant_id, session_id, scan_age]
+#    Example:
+#      participant_id    session_id    scan_age
+#      CC00001XX01       1000          25.0
+#
+# 2. Input Files Required Per Subject (sub-<participant_id>_ses-<session_id>):
+#    - Original T2w volume (.nii.gz)
+#    - Original Multi-BOUNTI segmentation label (.nii.gz)
+#    - Pre-aligned segmentation label (.nii.gz) registered to template space
+#
+# Pipeline Stages:
+# ---------------------------
+# 1. Surface Reconstruction:
+#    - Loads initial surfaces and affine-aligned simplified label data.
+#    - Predicts Left/Right White Matter and Pial surfaces.
+#    - Post-processes and maps surfaces back to native T2w space.
+#
+# 2. Metric Calculation:
+#    - Computes Midthickness surface, cortical thickness, sulcal depth, curvature and surface area.
+#
+# 3. Optional Post-Processing:
+#    - Spherical Inflation using FreeSurfer (--do_spheres):
+#      Generates inflated, very-inflated, and spherical surfaces
+#    - Cortical Parcellation / ROIs (--do_rois):
+#      Maps volumetric BOUNTI labels to surface, fills unlabelled holes,
+#      and prunes/corrects spurious label islands.
+#      - Keeps before and after correction files if you run --do_rois --keep_intermediates
+#      - Over-writes cortical parcellation file with the latest corrected one if you run only with --do_rois
 
 ####################
 import os

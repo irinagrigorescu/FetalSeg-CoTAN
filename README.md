@@ -12,6 +12,8 @@ This repository contains the code to:
 2. Do inference on the preprocessed data to obtain surfaces (Step 4 in figure below).
 3. Postproces the predicted surfaces to obtain inflated surfaces, metrics and cortical parcellations (Step 5 in figure below) 
 
+More details about this piece of work can be found at [3] [link to paper / TBD].
+
 ![FetalSeg-CoTAN pipeline](images/figure-pipeline-framework-1.png)
 
 ## Example usage
@@ -136,4 +138,5 @@ Please do check them out:
 ## Bibliography:
 1. Multi-BOUNTI: Multi-lobe Brain vOlUmetry and segmeNtation for feTal and neonatal MRI (Uus et al., 2026) [https://doi.org/10.64898/2026.04.21.26351376](https://doi.org/10.64898/2026.04.21.26351376)
 2. fetalsvrtk/surface:multi_bounti_2026 [https://hub.docker.com/r/fetalsvrtk/surface](https://hub.docker.com/r/fetalsvrtk/surface)
+3. FetalSegCoTAN ... [TBD]
 
