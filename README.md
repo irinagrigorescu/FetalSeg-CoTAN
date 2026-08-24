@@ -1,8 +1,5 @@
 # FetalSeg-CoTAN
 
-## Author
-Irina Grigorescu
-
 ## Overview
 FetalSeg-CoTAN is a deep learning framework that reconstructs fetal white matter and pial cortical surfaces directly from tissue segmentation labels.
 The network was trained using fetal Multi-BOUNTI labels [1] (Step 1 in figure below), 
