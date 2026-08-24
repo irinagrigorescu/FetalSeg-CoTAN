@@ -65,9 +65,11 @@ from src.metrics import (
 )
 
 #############################################
+### This is to correct the ROIs
+from postprocessing.postprocessing_helpers.fill_holes_in_ROIs import fill_holes_in_rois
+from postprocessing.postprocessing_helpers.correct_islands_in_ROIs import correct_islands_in_ROIs
 ### This is to re-save the freesurfer generated surfaces
 from postprocessing.postprocessing_helpers.save_surfaces_correctly import save_gifti_surface_correctly
-
 
 def correct_generated_surfaces(subj_dir, subj_id, hemi):
     """Re-saves FreeSurfer GIFTI outputs with corrected metadata/headers."""
@@ -83,6 +85,41 @@ def correct_generated_surfaces(subj_dir, subj_id, hemi):
                         surface_hemi=hemi,
                         surface_type=stype
             )
+
+def finalize_roi_files(
+    final_path,
+    curr_subj,
+    hemi,
+    sfx_raw="rois",
+    sfx_filled="rois_filled",
+    sfx_cleaned="rois_cleaned"
+):
+    """
+    Finalizes ROI files:
+    1. If all 3 files exist: moves cleaned to raw and deletes filled.
+    2. Else if only raw exists: keeps raw as is.
+    3. Otherwise: logs an error and returns False.
+    """
+    f_raw = os.path.join(final_path, f"{curr_subj}_pred_{hemi}_{sfx_raw}.label.gii")
+    f_filled = os.path.join(final_path, f"{curr_subj}_pred_{hemi}_{sfx_filled}.label.gii")
+    f_cleaned = os.path.join(final_path, f"{curr_subj}_pred_{hemi}_{sfx_cleaned}.label.gii")
+
+    # Case 1: All 3 files exist -> finalize post-processed output
+    if os.path.exists(f_raw) and os.path.exists(f_filled) and os.path.exists(f_cleaned):
+        shutil.move(f_cleaned, f_raw)
+        os.remove(f_filled)
+        print(f"[+] Finalized: Overwrote {f_raw} with cleaned labels and removed intermediate file.")
+        return
+
+    # Case 2: Only raw exists -> valid fallback (e.g., if post-processing was skipped)
+    if os.path.exists(f_raw):
+        print(f"[+] Raw ROI file exists: {f_raw}")
+        return
+
+    # Case 3: Expected outputs missing -> failure
+    print(f"[-] Error: Required ROI files missing for {curr_subj} ({hemi}).")
+    return
+
 #############################################
 
 
@@ -97,9 +134,11 @@ def run_predict_all(args):
     tsv_file_subjects = args.tsv_file_subjects  # path to tsv file with all subjects
     templates_path    = args.templates_path     # path to initial surfaces templates and t2w template
     orig_t2w_path     = args.orig_t2w_path      # the path to the original T2w
+    orig_lab_path     = args.orig_lab_path      # the path to the original Label data
     affine_label_path = args.affine_label_path  # the path to the affinely registered label
     output_path       = args.output_path        # the path to the outputs
     do_spheres        = args.do_spheres         # flag to run script for spheres or not
+    do_rois           = args.do_rois            # flag to run script for ROIs or not
     device            = args.device             # whether cpu or cuda
     results_file      = args.results_file       # file where all metrics are stored
     logs_file         = args.logs_file          # file where all the logs are stored
@@ -186,9 +225,12 @@ def run_predict_all(args):
     csv_results_data = {k: ["NA"] * len(subjects_names) for k in all_keys}
 
     # -------------- INITIALIZE LOG DATA
-    log_keys = ["subj", "scan_age", "sphere_left", "sphere_right",
-                "time_recon_left", "time_recon_right",
-                "time_recon_wsphere_left", "time_recon_wsphere_right"]
+    log_keys = ["subj", "scan_age",
+                "sphere_left", "sphere_right",
+                "rois_left", "rois_right",
+                "time_inference_surfaces_left", "time_inference_surfaces_right",
+                "time_recon_sphere_left", "time_recon_sphere_right",
+                "time_recon_rois_left", "time_recon_rois_right"]
     csv_log_data = {k: ["NA"] * len(subjects_names) for k in log_keys}
 
     ###############################################################
@@ -215,16 +257,21 @@ def run_predict_all(args):
         # -------------- Get PATHS
         # current subject's path to the original t2w image (before registration)
         curr_orig_t2w = f"{orig_t2w_path}/{curr_subj}/{curr_subj}_T2w.nii.gz"
+        # current subject's path to the original Multi-BOUNTI Label data (before registration)
+        curr_orig_lab = f"{orig_lab_path}/{curr_subj}/{curr_subj}_LAB43_brain.nii.gz"
         # current subject's path to the affinely aligned label data
         curr_aff_lab = f"{affine_label_path}/{curr_subj}/{curr_subj}_LAB_brain_affine.nii.gz"
 
         # -------------- Check existence
         if check_file_exists(curr_aff_lab, "affine label") == -1: return -1
         if check_file_exists(curr_orig_t2w, "original t2w") == -1: return -1
+        if check_file_exists(curr_orig_lab, "original label") == -1: return -1
 
         # -------------- COPY original T2w image to final_path
         shutil.copy(curr_orig_t2w, final_path)
         print(f"Copied {curr_subj}_T2w.nii.gz to {final_path}")
+        shutil.copy(curr_orig_lab, final_path)
+        print(f"Copied {curr_subj}_LAB43_brain.nii.gz to {final_path}")
 
         # -------------- LOAD data and affines
         print('\nLoad Label data ...')
@@ -460,9 +507,9 @@ def run_predict_all(args):
 
         # ---------------------------------- Store time_recon
         if do_left:
-            csv_log_data["time_recon_left"][i_s] = float(t_end_end - t_start_start)
+            csv_log_data["time_inference_surfaces_left"][i_s] = float(t_end_end - t_start_start)
         if do_right:
-            csv_log_data["time_recon_right"][i_s] = float(t_end_end - t_start_start)
+            csv_log_data["time_inference_surfaces_right"][i_s] = float(t_end_end - t_start_start)
 
         ###############################################################
         ###############################################################
@@ -470,40 +517,77 @@ def run_predict_all(args):
         if do_spheres:
             print('\nStarting surface inflation to sphere...')
 
-            # DO LEFT
-            if do_left:
-                cmd_left = ["bash", "postprocessing/create_spheres.sh", curr_subj, final_path, "left"]
-                res_left = subprocess.run(cmd_left, check=False)
+            for hemi_, do_hemi_ in [("left", do_left), ("right", do_right)]:
+                if do_hemi_:
+                    t_start_start = time.time()
+                    cmd_curr = ["bash", "postprocessing/create_spheres.sh", curr_subj, final_path, hemi_]
+                    res_curr = subprocess.run(cmd_curr, check=False)
 
-                if res_left.returncode == 0:
-                    # Re-save GIFTI outputs with correct Workbench metadata
-                    correct_generated_surfaces(final_path, curr_subj, "left")
+                    if res_curr.returncode == 0:
+                        # Re-save GIFTI outputs with correct Workbench metadata
+                        correct_generated_surfaces(final_path, curr_subj, hemi_)
 
-                    csv_log_data["sphere_left"][i_s] = "Y"
-                    t_end_end = time.time()
-                    csv_log_data["time_recon_wsphere_left"][i_s] = float(t_end_end - t_start_start)
-                else:
-                    print(f"[-] Inflation failed for {curr_subj} left hemisphere.")
-                    csv_log_data["sphere_left"][i_s] = "N"
+                        csv_log_data[f"sphere_{hemi_}"][i_s] = "Y"
+                        t_end_end = time.time()
+                        csv_log_data[f"time_recon_sphere_{hemi_}"][i_s] = float(t_end_end - t_start_start)
+                    else:
+                        print(f"[-] Inflation failed for {curr_subj} {hemi_} hemisphere.")
+                        csv_log_data[f"sphere_{hemi_}"][i_s] = "N"
 
-            # DO RIGHT
-            if do_right:
-                cmd_right = ["bash", "postprocessing/create_spheres.sh", curr_subj, final_path, "right"]
-                res_right = subprocess.run(cmd_right, check=False)
-
-                if res_right.returncode == 0:
-                    # Re-save GIFTI outputs with correct Workbench metadata
-                    correct_generated_surfaces(final_path, curr_subj, "right")
-
-                    csv_log_data["sphere_right"][i_s] = "Y"
-                    t_end_end = time.time()
-                    csv_log_data["time_recon_wsphere_right"][i_s] = float(t_end_end - t_start_start)
-                else:
-                    print(f"[-] Inflation failed for {curr_subj} right hemisphere.")
-                    csv_log_data["sphere_right"][i_s] = "N"
         else:
             csv_log_data["sphere_left"][i_s]  = "SKIPPED"
             csv_log_data["sphere_right"][i_s] = "SKIPPED"
+        ###############################################################
+        ###############################################################
+
+        ###############################################################
+        ###############################################################
+        # ---------------------------------- DO ROIs
+        if do_rois:
+            print('\nStarting cortical parcellation...')
+
+            for hemi_, do_hemi_ in [("left", do_left), ("right", do_right)]:
+
+                if do_hemi_:
+                    t_start_start = time.time()
+                    cmd_curr = ["bash", "postprocessing/create_ROIs.sh", curr_subj, final_path, hemi_]
+                    res_curr = subprocess.run(cmd_curr, check=False)
+
+                    if res_curr.returncode == 0:
+                        # 1. Fill unlabelled hole vertices in cortical parcellation
+                        fill_holes_in_rois(
+                            subject_id=curr_subj,
+                            surface_hemi=hemi_,
+                            input_dir=final_path,
+                            output_dir=final_path,
+                            input_suffix="rois",
+                            output_suffix="rois_filled"
+                        )
+                        # 2. Correct disconnected islands
+                        correct_islands_in_ROIs(
+                            subject_id=curr_subj,
+                            surface_hemi=hemi_,
+                            input_dir=final_path,
+                            output_dir=final_path,
+                            min_island_size=2,
+                            input_suffix="rois_filled",
+                            output_suffix="rois_cleaned"
+                        )
+                        # 3. Clean up intermediate files if keep_intermediates is False
+                        if not args.keep_intermediates:
+                            finalize_roi_files(final_path, curr_subj, hemi_,
+                                               "rois", "rois_filled", "rois_cleaned")
+
+                        csv_log_data[f"rois_{hemi_}"][i_s] = "Y"
+                        t_end_end = time.time()
+                        csv_log_data[f"time_recon_rois_{hemi_}"][i_s] = float(t_end_end - t_start_start)
+                    else:
+                        print(f"[-] Cortical parcellation failed for {curr_subj} {hemi_} hemisphere.")
+                        csv_log_data[f"rois_{hemi_}"][i_s] = "N"
+
+        else:
+            csv_log_data["rois_left"][i_s]  = "SKIPPED"
+            csv_log_data["rois_right"][i_s] = "SKIPPED"
         ###############################################################
         ###############################################################
 
@@ -556,14 +640,20 @@ if __name__ == "__main__":
     parser.add_argument('--orig_t2w_path',
                         default='fetal-original-data/',
                         type=str,
-                        help=r"""expects the input data to be in PATH + /sub-CC***_ses-***/ for each subject
-                            This represents the path to the original T2w data""")
+                        help=r"""expects the input data to be in PATH + /sub-CC***_ses-***/sub-CC***_ses-***_T2w.nii.gz
+                            for each subject. This represents the path to the original T2w data""")
+
+    parser.add_argument('--orig_lab_path',
+                        default='fetal-original-data/',
+                        type=str,
+                        help=r"""expects the input data to be in PATH + /sub-CC***_ses-***/sub-CC***_ses-***_LAB43_brain.nii.gz
+                                 for each subject. This represents the path to the original T2w data""")
 
     parser.add_argument('--affine_label_path',
                         default='fetal-affine-aligned-data/',
                         type=str,
-                        help=r"""expects the input data to be in PATH + /sub-CC***_ses-***/ for each subject
-                            This represents the path to the affinely registered Label data""")
+                        help=r"""expects the input data to be in PATH + /sub-CC***_ses-***/sub-CC***_ses-***_LAB_brain_affine.nii.gz 
+                                 for each subject. This represents the path to the affinely registered Label data""")
 
     parser.add_argument('--output_path',
                         default='fetal-output-surfaces/',
@@ -578,6 +668,20 @@ if __name__ == "__main__":
                         whether to run surface inflation to create spherical mappings.
                         Default is False.""")
 
+    parser.add_argument('--do_rois',
+                        action='store_true',
+                        default=False,
+                        help=r"""[optional]
+                        whether to run ROIs creation to create cortical parcellations.
+                        Default is False.""")
+
+    parser.add_argument('--keep_intermediates',
+                        action='store_true',
+                        default=False,
+                        help=r"""[optional]
+                        if set to True, retains intermediate label files (_rois_filled, _rois_cleaned).
+                        if set to False (default), overwrites _rois with cleaned labels and deletes intermediates.""")
+
     parser.add_argument('--device',
                         default='cuda',
                         type=str,
@@ -589,15 +693,3 @@ if __name__ == "__main__":
     run_predict_all(args)
 
 
-### TEST if it works:
-# python -m predict_all
-# --tsv_file_subjects="/data/project/test-fetalsegcotan/fetal-subjects.tsv"
-# --results_file="fetal-metrics.csv"
-# --logs_file="fetal-logs.csv"
-# --templates_path="templates/"
-# --orig_t2w_path="/data/project/test-fetalsegcotan/input-orig/"
-# --affine_label_path="/data/project/test-fetalsegcotan/input-aff/"
-# --output_path="/data/project/test-fetalsegcotan/output/"
-# --do_spheres
-# --device="cuda"
-# python -m predict_all --tsv_file_subjects="/data/project/test-fetalsegcotan/fetal-subjects.tsv" --results_file="fetal-metrics.csv" --logs_file="fetal-logs.csv" --templates_path="templates/" --orig_t2w_path="/data/project/test-fetalsegcotan/input-orig/" --affine_label_path="/data/project/test-fetalsegcotan/input-aff/" --output_path="/data/project/test-fetalsegcotan/output/" --do_spheres --device="cuda"
