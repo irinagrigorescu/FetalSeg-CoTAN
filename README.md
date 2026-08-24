@@ -16,6 +16,14 @@ More details about this piece of work can be found at [3] [link to paper / TBD].
 
 ![FetalSeg-CoTAN pipeline](images/figure-pipeline-framework-1.png)
 
+Below you can see 5 example subjects at 22, 25, 29, 33, and 36 weeks gestational age (GA).
+For each subject, the reconstructed white matter (green) and pial (purple) boundaries are overlaid 
+on top of the mid-brain axial slice of their respective native T2w image, 
+followed by the reconstructed white and pial surfaces for the left hemisphere.
+Cortical thickness, sulcal depth, mean curvature, and the cortical parcellation maps are displayed
+on the corresponding inflated surfaces.
+![Representative FetalSeg-CoTAN outputs across gestation](images/figure-example-subjects.png)
+
 ## Example usage
 
 ### Preprocessing your data
