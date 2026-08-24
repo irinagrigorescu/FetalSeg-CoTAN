@@ -219,5 +219,6 @@ __marimo__/
 
 # My Gitignores
 note-on-models.txt
+note-on-running-scripts.txt
 .idea
 .idea/*
