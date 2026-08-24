@@ -1,0 +1,86 @@
+Frontal Lobe GM - R
+1   31  153  125   1
+Frontal Lobe GM - L
+2   29  131  194   1
+Parietal Lobe GM - R
+3   59   34  135   1
+Parietal Lobe GM - L
+4   68   35  212   1
+Occipital Lobe GM - R
+5  138   45  208   1
+Occipital Lobe GM - L
+6   18  126   92   1
+Insular Cortex GM - R
+7   23   15  113   1
+Insular Cortex GM - L
+8   31   85   41   1
+Temporal Lobe GM - R
+9   47   99  171   1
+Temporal Lobe GM - L
+10  118   42  158   1
+Cingulate Gyrus GM - R
+11  123  181   69   1
+Cingulate Gyrus GM - L
+12   49  122   22   1
+Frontal Lobe WM - R
+13  187  139  235   1
+Frontal Lobe WM - L
+14  217  117  211   1
+Parietal Lobe WM - R
+15  215  100  221   1
+Parietal Lobe WM - L
+16  239  163  112   1
+Occipital Lobe WM - R
+17  217   79  100   1
+Occipital Lobe WM - L
+18  191  125  217   1
+Sub-Insular WM - R
+19  171   19  161   1
+Sub-Insular WM - L
+20  149   65   19   1
+Temporal Lobe WM - R
+21  230  146  104   1
+Temporal Lobe WM - L
+22  230   95  120   1
+Cingulate Gyrus WM - R
+23  153   36   69   1
+Cingulate Gyrus WM - L
+24   98   25  171   1
+Corpus Callosum
+25  235  123   18   1
+Intracerebral Background
+26  255  255  255   1
+Brainstem
+27   99   85   39   1
+Cerebellar Hemisphere - R
+28  140   43   30   1
+Cerebellar Hemisphere - L
+29   74   24  162   1
+Cerebellar Vermis
+30  203  149   63   1
+Caudate Nucleus - R
+31   99    4   53   1
+Caudate Nucleus - L
+32  104   47   17   1
+Lentiform Nucleus - R
+33  122   22   25   1
+Lentiform Nucleus - L
+34  102   17  117   1
+Thalamus - R
+35  106   31  144   1
+Thalamus - L
+36  126   27   75   1
+Extracerebral CSF - R
+37  197  239  255   1
+Extracerebral CSF - L
+38  174  255  190   1
+Lateral Ventricle - R
+39   13  117   75   1
+Lateral Ventricle - L
+40    2   80  135   1
+Cavum Septum Pellucidum
+41  248  217  112   1
+Third Ventricle
+42  240  255  240   1
+Fourth Ventricle
+43  245  222  179   1
