@@ -1,15 +1,18 @@
 # FetalSeg-CoTAN
 
-## Overview
-FetalSeg-CoTAN is a deep learning framework that reconstructs fetal white matter and pial cortical surfaces directly from tissue segmentation labels.
-
-## Repository Status
-This repository is currently under active development and is not yet ready for public use.
-The codebase, documentation, and setup instructions are being finalized.
-Please check back soon for updates. Thank you for your patience!
-
 ## Author
 Irina Grigorescu
+
+## Overview
+FetalSeg-CoTAN is a deep learning framework that reconstructs fetal white matter and pial cortical surfaces directly from tissue segmentation labels.
+The network was trained using fetal Multi-BOUNTI labels [1] (Step 1 in figure below), 
+where pseudo-GT surfaces were extracted using the fetal-adapted classical surface reconstruction pipeline [2]  (Step 2 in figure below).
+This repository contains the code to:
+1. Preprocess your fetal data to be affinely aligned to the 36-week T2w fetal brain atlas (see: templates/dhcp_fetal_week36_t2w.nii.gz) and in its 5-tissue labels simplfied form (Step 3 in figure below).
+2. Do inference on the preprocessed data to obtain surfaces (Step 4 in figure below).
+3. Postproces the predicted surfaces to obtain inflated surfaces, metrics and cortical parcellations (Step 5 in figure below) 
+
+![FetalSeg-CoTAN pipeline](images/figure-pipeline-framework-1.png)
 
 ## Example usage
 
@@ -129,3 +132,8 @@ The following repositories were not only of great inspiration, but have also hel
 Please do check them out:
 1. CoTAN - [https://github.com/m-qiang/CoTAN](https://github.com/m-qiang/CoTAN)
 2. CoSEG - [https://github.com/m-qiang/CoSeg](https://github.com/m-qiang/CoSeg)
+
+## Bibliography:
+1. Multi-BOUNTI: Multi-lobe Brain vOlUmetry and segmeNtation for feTal and neonatal MRI (Uus et al., 2026) [https://doi.org/10.64898/2026.04.21.26351376](https://doi.org/10.64898/2026.04.21.26351376)
+2. fetalsvrtk/surface:multi_bounti_2026 [https://hub.docker.com/r/fetalsvrtk/surface](https://hub.docker.com/r/fetalsvrtk/surface)
+
