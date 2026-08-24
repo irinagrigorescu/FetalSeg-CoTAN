@@ -9,6 +9,9 @@ import argparse
 import nibabel as nib
 from src.io import save_gifti_surface
 
+# ---------------------------------------------------------------------------
+# GIFTI I/O helpers
+# ---------------------------------------------------------------------------
 def save_gifti_surface_correctly(data_path_in, data_path_out, surface_hemi, surface_type):
     # ------ print information ------
     print(f"\nRunning save_surface_correctly.py with:\n")
@@ -22,6 +25,9 @@ def save_gifti_surface_correctly(data_path_in, data_path_out, surface_hemi, surf
                        save_dir=data_path_out,
                        surf_hemi=surface_hemi, surf_type=surface_type)
 
+# ---------------------------------------------------------------------------
+# Main CLI Entrypoint
+# ---------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description="Save Surface Correctly")
 
