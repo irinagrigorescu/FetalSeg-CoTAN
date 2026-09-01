@@ -222,3 +222,4 @@ note-on-models.txt
 note-on-running-scripts.txt
 .idea
 .idea/*
+src/train*py
