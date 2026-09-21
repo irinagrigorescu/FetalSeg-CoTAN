@@ -26,7 +26,7 @@ def load_T2w_template_and_affine(fpath):
     return img_t2_atlas_ants, affine_mat
 
 
-def load_initial_surfaces(fpath, hemi):
+def load_initial_surfaces(fpath, hemi, ico_="ico6"):
     """
     Load the initial surfaces used as input to the network
 
@@ -35,7 +35,7 @@ def load_initial_surfaces(fpath, hemi):
     :return:
     """
     # Load surface initial
-    surf_in = nib.load(os.path.join(fpath, f"week36_{hemi}_vinflated_symmetry_affine.ico6.surf.gii"))
+    surf_in = nib.load(os.path.join(fpath, f"week36_{hemi}_vinflated_symmetry_affine.{ico_}.surf.gii"))
 
     return surf_in
 
@@ -80,10 +80,10 @@ def save_gifti_surface(vert, face, save_dir, surf_hemi='left', surf_type='wm'):
     elif surf_hemi == 'right':
         _surf_hemi = 'CortexRight'
 
-    if surf_type == 'wm':
+    if surf_type == "wm" or surf_type == "WM" or surf_type == "GrayWhite":
         _surf_type = 'GrayWhite'
         _geo_type = 'Anatomical'
-    elif surf_type == 'pial':
+    elif surf_type == "pial" or surf_type == "Pial":
         _surf_type = 'Pial'
         _geo_type = 'Anatomical'
     elif surf_type == 'midthickness':
