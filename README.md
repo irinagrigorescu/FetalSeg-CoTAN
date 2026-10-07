@@ -80,7 +80,7 @@ MAIN_DATA_FOLDER/
 Assuming your data is in ```MAIN_DATA_FOLDER/input-aff/``` as shown above,
 navigate to the **FetalSeg-CoTAN root directory** (or project root) and run the following command:
 ```
-python -m predict_all \
+python -m predict-fetal \
           --tsv_file_subjects="/PATH/TO/fetal-subjects.tsv" \
           --results_file="fetal-metrics.csv" \
           --logs_file="fetal-logs.csv" \
